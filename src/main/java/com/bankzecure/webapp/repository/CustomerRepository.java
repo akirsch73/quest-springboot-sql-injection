@@ -3,6 +3,7 @@ package com.bankzecure.webapp.repository;
 import java.sql.DriverManager;
 import java.sql.Connection;
 import java.sql.Statement;
+import java.sql.PreparedStatement; // hinzugefügt
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import com.bankzecure.webapp.entity.*;
@@ -15,14 +16,24 @@ public class CustomerRepository {
 
   public Customer findByIdentifierAndPassword(final String identifier, final String password) {
     Connection connection = null;
-    Statement statement = null;
+    PreparedStatement statement = null;
     ResultSet resultSet = null;
     try {
       connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD);
-      statement = connection.createStatement();
-      final String query = "SELECT * FROM customer " +
-        "WHERE identifier = '" + identifier + "' AND password = '" + password + "'";
-      resultSet = statement.executeQuery(query);
+
+      final String query = "SELECT * FROM customer WHERE identifier = ? AND password = ?;"; // '" + identifier + "' '" + password + "'
+
+
+      System.out.println(query);
+      statement = connection.prepareStatement(query); //statement = connection.createStatement();
+
+
+      System.out.println(statement);
+      statement.setString(1, identifier);
+      statement.setString(2, password);
+      System.out.println(statement);
+
+      resultSet = statement.executeQuery(); //       resultSet = statement.executeQuery(query);
 
       Customer customer = null;
 
@@ -45,37 +56,46 @@ public class CustomerRepository {
     return null;
   }
 
+  //-------------------
+
   public Customer update(String identifier, String newEmail, String newPassword) {
 
     Connection connection = null;
-    Statement statement = null;
+    PreparedStatement statement = null; // Statement statement = null;
+    PreparedStatement statement1 = null; // Statement statement = null;
+    PreparedStatement statement2 = null; // Statement statement = null;
+    PreparedStatement statement3 = null; // Statement statement = null;
     ResultSet resultSet = null;
     Customer customer = null;
-    try {
-        // Connection and statement
-        connection = DriverManager.getConnection(
-          DB_URL, DB_USERNAME, DB_PASSWORD
-        );
-        statement = connection.createStatement();
+    String emailquery = "UPDATE customer SET email = ?";
 
-        // Build the update query using a QueryBuilder
-        StringBuilder queryBuilder = new StringBuilder();
-        queryBuilder.append("UPDATE customer SET email = '" + newEmail + "'");
-        // Don't set the password in the update query, if it's not provided
-        if (newPassword != "") {
-          queryBuilder.append(",password = '" + newPassword + "'");
-        }
-        queryBuilder.append(" WHERE identifier = '" + identifier + "'");
-        String query = queryBuilder.toString();
-        statement.executeUpdate(query);
+  try {
+    connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD);
+
+      if (newPassword != "") {
+        statement = connection.prepareStatement("UPDATE customer SET email = ?" + ",password = ?" + " WHERE identifier = ?");
+        statement.setString(1, newEmail);
+        statement.setString(2, newPassword);
+        statement.setString(3, identifier);
+        statement.executeUpdate();
+
+      } else {
+        statement = connection.prepareStatement("UPDATE customer SET email = ?" + " WHERE identifier = ?");
+        statement.setString(1, newEmail);
+        statement.setString(2, identifier);
+      }
+        statement.executeUpdate();
 
         JdbcUtils.closeStatement(statement);
         JdbcUtils.closeConnection(connection);
 
         connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD);
-        statement = connection.createStatement();
-        query = "SELECT * FROM customer WHERE identifier = '" + identifier + "'";
-        resultSet = statement.executeQuery(query);
+
+
+      statement = connection.prepareStatement("Select * from customer where identifier = ?");
+      statement.setString(1, identifier);
+
+            resultSet = statement.executeQuery();
 
         if (resultSet.next()) {
           final int id = resultSet.getInt("id");
